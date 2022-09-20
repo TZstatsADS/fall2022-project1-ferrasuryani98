@@ -2,7 +2,9 @@
 ## Fall 2022
 ## Project 1: What's in a realist's mind?
 
-<img src="https://www.theemotionmachine.com/a-realistic-approach-to-positive-thinking/" width="500">
+<img src="https://www.theemotionmachine.com/wp-content/uploads/Screen-Shot-2013-04-14-at-9.38.04-AM.png" width="500">
+
+
 
 ### [Project Description](doc/)
 
