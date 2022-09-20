@@ -1,18 +1,18 @@
 # Applied Data Science @ Columbia
 ## Fall 2022
-## Project 1: A "data story" on the history of philosophy
+## Project 1: What's in a realist's mind?
 
-<img src="figs/100126-the-glass.jpeg" width="500">
+<img src="https://www.theemotionmachine.com/a-realistic-approach-to-positive-thinking/" width="500">
 
 ### [Project Description](doc/)
-This is the first and only *individual* (as opposed to *team*) project this semester. 
 
 Term: Fall 2022
 
-+ Projec title: Lorem ipsum dolor sit amet
-+ This project is conducted by [your name]
++ Projec title: What's in a realist's mind? uncovering Aristotle and Locke's way of thinking
++ This project is conducted by Ferra Suryani
 
-+ Project summary: [a short summary] Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
++ Project summary: Aristotle and John Locke are both key realism philosophers, one of the four main school of philosophy that focuses on the foundation of scientific reasoning and teaches how draw our observations and conclusions from the world around us, rather than confining ourselves to an analysis of our own ideas. In this project, I'd want to dive deep into these realists by analyzing the text contained in each respective works, which was done using the following approaches: finding common words and most important words used in each works, finding relationship among important words, word usage comparison, and topic modeling.
+
 
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
