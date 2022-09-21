@@ -1,5 +1,4 @@
-# ADS Project 1:  R Notebook on the history of philosophy
+# ADS Project 1: What's in a realist's mind?
 
 ### Doc folder
-
-The doc directory contains the report or presentation files. It can have subfolders.  
+This folder contains files that are returned as a result of this project.
