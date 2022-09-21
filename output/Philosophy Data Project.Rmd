@@ -1,0 +1,418 @@
+---
+title: "What's in a realist's head?"
+subtitle: "uncovering Aristotle and Locke’s way of thinking"
+author: "Ferra Suryani | fks2114"
+output:
+  html_document:
+    theme: spacelab
+    toc: yes
+    number_sections: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+This project will dive deep into two key Realism philosophers' thoughts - Aristotle and Locke. Realism is a school within 10 philosophy schools that emphasizes on “reality, knowledge, and value exist independent of the human mind”. These thoughts can be investigated by analyzing the text, broken down into sentences, used in both of their works.
+
+Context: Realists argue for the use of the senses and scientific investigation in order to discover truth. The application of the scientific method also allows individuals to classify things into different groups based on their essential differences.
+
+# Preliminaries
+
+## libraries load
+```{r}
+library(tidyverse)
+library(tidytext)
+library(stringr)
+library(DT)
+library(igraph)
+library(ggraph)
+library(topicmodels)
+library('wordcloud')
+library(caret)
+library(ggthemes)
+library(dplyr)
+library(SnowballC)
+library(magrittr)
+library(forcats)
+library(tm)
+library(topicmodels)
+```
+
+## load in data
+```{r}
+df <- read.csv("/Users/ferratan/Documents/fall2022-project1-ferrasuryani98/data/philosophy_data.csv")
+
+# filter to only return works by Aristotle and Locke
+realist <- df %>%
+            filter(author == 'Aristotle' | author == 'Locke')
+
+realist %>% as_tibble()
+```
+
+## data cleaning
+
+### remove punctuation
+```{r}
+realist$sentence_cleaned <- removePunctuation(realist$sentence_lowered)
+
+realist %>% as_tibble()
+```
+### remove stopwords
+```{r}
+realist_df <- realist %>%
+  select(author, sentence_cleaned)
+
+sw <- stop_words$word
+
+remove_words_from_text <- function(text) {
+  text <- unlist(strsplit(text, " "))
+  paste(text[!text %in% sw], collapse = " ")
+}
+
+realist_df$sentence_cleaned <- lapply(realist_df$sentence_cleaned, remove_words_from_text)
+```
+
+# Who has more notable works?
+In this section, I'd want to see the distribution of the amount of works by each philosopher contained in the dataset. It was found that Aristotle has 48779 sentences and Locke has 8885	sentences used in each respective works. 
+
+## number of sentences used based off author's works
+```{r}
+realist %>%
+  group_by(author) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(author = reorder(author,Count)) %>%
+  ggplot(aes(x = author,y = Count)) +
+  geom_bar(stat='identity') +
+  labs(x = 'author', 
+       title = 'number of works done in total') +
+  coord_flip() 
+```
+
+# Wordcloud: what are the 20 most common words used in each author's works?
+In this step, I'm interested in finding out the most commonly used words contained in the philosopher's works.
+
+## most commonly used words in each respective works
+```{r}
+# count number of words 
+realist_words <- realist_df %>%
+  unnest_tokens(word, sentence_cleaned) %>%
+  count(author, word, sort = TRUE)
+
+total_words <- realist_words %>% 
+  group_by(author) %>% 
+  summarize(total = sum(n))
+
+realist_words <- left_join(realist_words, total_words)
+
+head(realist_words)
+```
+
+## 20 common words used by Aristotle
+Philosophy, to Aristotle, meant applying reason to observation as a means of understanding the riddles of our world and making the most of our lives. Aristotle is also an important contributor to some major philosophy areas such as logic, rhetoric, ethics, to name a few. As a big contributor to rhetoric, Aristotle likes to use real things to describe his viewpoint with words such as animals, nature, body, time, and water. 
+```{r}
+# create df to return only works by Aristotle
+realist_aristotle <- realist_df %>%
+  select(author, sentence_cleaned) %>%
+  filter(author == 'Aristotle')
+
+# tokenize and count words
+realist_aristotle %>%
+  unnest_tokens(word, sentence_cleaned) %>%
+  filter(!is.na(word)) %>%
+  filter(!word %in% stop_words$word) %>%
+  count(word,sort = TRUE) %>%
+  ungroup()  %>%
+  head(20) %>%
+
+# word cloud
+with(wordcloud(word, n, max.words = 20,colors=brewer.pal(8, "Dark2")))
+```
+
+## 20 common words used by Locke
+Locke's works are mainly centered around political philosophy, governmental, and education. Based off the wordcloud, it appears that ideas, idea, mind, knowledge, and power are some of the key words used in his works. These words are all major words surrounding politics and governments.  
+```{r}
+# create df to return only works by Locke
+realist_locke <- realist_df %>%
+  select(author, sentence_cleaned) %>%
+  filter(author == 'Locke')
+
+# tokenize and count words
+realist_locke %>%
+  unnest_tokens(word, sentence_cleaned) %>%
+  filter(!is.na(word)) %>%
+  filter(!word %in% stop_words$word) %>%
+  count(word,sort = TRUE) %>%
+  ungroup()  %>%
+  head(20) %>%
+
+# word cloud
+with(wordcloud(word, n, max.words = 20,colors=brewer.pal(8, "Dark2")))
+```
+
+# TF-IDF: analyzing 15 most important words and words frequency
+I'm intrigued to find out the most valuable words used in the works by each author. I'd be using the TF-IDF approach, which is a technique used to find the important words for the content of each document by decreasing the weight for commonly used words and increasing the weight for words that are not used very much in a collection or corpus of documents.
+
+Documents in this case would be a set of words in the sentences of the works. 
+
+## compute top 15 words by each author based off TF-IDF score
+From the graph we can see that the list of words is pretty different as compared to the list of the common words. We can conclude that although Aristotle liked to use words based off various objects such as animals, nature, and body, it does not necessarily reflect the main idea of the entire work.
+
+```{r}
+# compute the tf-idf for each term
+realist_words_full <- realist_words %>%
+  bind_tf_idf(word, author, n)
+
+# compute comparison graph
+realist_words_full %>%
+  group_by(author) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = author)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#940f0f", "#0f9494")) +
+  facet_wrap(~author, ncol = 2, scales = "free") +
+  labs(x = "tf-idf", y = NULL)
+```
+
+# Which works do these important words belong to?
+Here we dive into the works by both author that contains the important words. 
+
+## works that contains the word 'Movement' in Aristotle's works
+```{r}
+keyword_a <- "movement"
+
+movement_works <- realist %>% 
+  filter(author == 'Aristotle') %>% 
+  filter(str_detect(sentence_lowered, keyword_a)) %>%
+  select(author, sentence_lowered) %>%
+  head(10)
+
+movement_works %>% as_tibble()
+```
+
+## works that contains the word 'Uneasiness' in Locke's works
+```{r}
+keyword_l <- "uneasiness"
+
+uneasiness_works <- realist %>% 
+  filter(author == 'Locke') %>% 
+  filter(str_detect(sentence_lowered, keyword_l)) %>%
+  select(author, sentence_lowered) %>%
+  head(10)
+
+uneasiness_works %>% as_tibble()
+```
+
+# Most common bigram
+A bigram is a collection of two words. This step involves approaches to unveil a pair of words rather than individual words. 
+
+## tokenizing by bigram: Aristotle
+```{r}
+# create bigram
+realist_bigram_aristotle <- realist_aristotle %>%
+  unnest_tokens(bigram, sentence_cleaned, token = "ngrams", n = 2)
+
+head(realist_bigram_aristotle)
+
+# count and filter bigram
+realist_bigram_aristotle %>%
+  count(bigram, sort = TRUE) %>%
+  head(20)
+```
+
+## tokenizing by bigram: Locke
+```{r}
+# create bigram
+realist_bigram_locke <- realist_locke %>%
+  unnest_tokens(bigram, sentence_cleaned, token = "ngrams", n = 2)
+
+head(realist_bigram_locke, 20)
+
+# count and filter bigram
+realist_bigram_locke %>%
+  count(bigram, sort = TRUE) %>%
+  head(20)
+```
+
+## bigram chart with most important bigrams
+Based off the chart, I noticed that Aristotle used a lot more ambiguous pairing of words related to concepts, while Locke seems to be more discrete with the choice of word pairings in his works, where he used a lot of words such as mind and ideas. 
+```{r}
+# combine both bigram
+realist_bigram_all <- rbind(realist_bigram_aristotle, realist_bigram_locke)
+
+# tokenized with tf-idf approach
+bigram_tf_idf <- realist_bigram_all %>%
+  count(author, bigram) %>%
+  bind_tf_idf(bigram, author, n) %>%
+  arrange(desc(tf_idf))
+
+head(bigram_tf_idf, 10)
+
+# create chart
+bigram_tf_idf %>%
+  group_by(author) %>%
+  slice_max(tf_idf, n = 15) %>%
+  ungroup() %>%
+  ggplot(aes(tf_idf, fct_reorder(bigram, tf_idf), fill = author)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#940f0f", "#0f9494")) +
+  facet_wrap(~author, ncol = 2, scales = "free") +
+  labs(x = "bigram with the highest tf-idf from each author", y = NULL)
+```
+
+
+
+# Relationships among important words
+This particular step will unwrap the visualization of all the relationships among words by building a network graph, which makes up of a combination of connected nodes containing words that appeared at least 50 times. 
+
+## common bigrams by Aristotle
+The visualization showcases a good way to see the text structure and that the word pairings seem to be pretty scattered. Since Aristotle's works are known to be heavily inspired by looking from the perspectives of various objects around the world, the word chains mainly come from those objects, as seen from various elements such as "water", "earth", "fire" and also a group of word chains including "heat", "cold", "hot" to represent temperatures. 
+```{r}
+# separate bigram into two words and count each word
+bigram_counts_a <- realist_aristotle %>%
+    unnest_tokens(bigram, sentence_cleaned, token = "ngrams", n = 2) %>%
+    separate(bigram, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word,
+           !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE)
+
+head(bigram_counts_a, 10)
+
+# create word graph with words that appeared more than 50 times
+bigram_graph_a <- bigram_counts_a %>%
+  filter(n > 50) %>%
+  graph_from_data_frame()
+
+# create ggraph 
+library(ggraph)
+set.seed(2022)
+
+ggraph(bigram_graph_a, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "darkred") +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+## common bigrams by Locke
+Locke's choices of words are more inter-correlated to each other. This makes sense since majority of Locke's works are more leaning towards logical perspectives such as political or education. The big word chain that involves "mind", "ideas", "complex", "abstract", "distinct" represents logical viewpoint. 
+```{r}
+# separate bigram into two words and count each word
+bigram_counts_l <- realist_locke %>%
+    unnest_tokens(bigram, sentence_cleaned, token = "ngrams", n = 2) %>%
+    separate(bigram, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word,
+           !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE)
+
+head(bigram_counts_l, 10)
+
+# create word graph with words that appeared more than 50 times
+bigram_graph_l <- bigram_counts_l %>%
+  filter(n > 50) %>%
+  graph_from_data_frame()
+
+# create ggraph 
+set.seed(2022)
+
+ggraph(bigram_graph_l, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "#0f9494") +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+# What are some words that are about equally used by both author?
+In this step I'm digging into the similarity in the word usage by both author. Based off the dataframe, we can see that both author seem to involve some emotional words such as "empty", "hatred", "perished" and also adjectives that symbolize togetherness to convey their intended message such as "uniform" and "assembly".
+```{r}
+tidy_realist <-realist %>% 
+  unnest_tokens(word, sentence_lowered) %>%
+  filter(!word %in% stop_words$word,
+         !word %in% str_remove_all(stop_words$word, "'"),
+         str_detect(word, "[a-z]"))
+
+word_ratios <- tidy_realist %>%
+  count(word, author) %>%
+  group_by(word) %>%
+  filter(sum(n) >= 10) %>%
+  ungroup() %>%
+  pivot_wider(names_from = author, values_from = n, values_fill = 0) %>%
+  mutate_if(is.numeric, list(~(. + 1) / (sum(.) + 1))) %>%
+  mutate(logratio = log(Aristotle / Locke)) %>%
+  arrange(desc(logratio))
+
+# top 10 words
+word_ratios %>% 
+  arrange(abs(logratio)) %>%
+  head(10)
+```
+
+# Which 15 words are most likely to be used by Aristotle or Locke in their respective works?
+In this step we're diving into the 15 most distinctive words used by both author. It looks like the choice of words Aristotle used primarily is more about achievements, which can be concluded from the words "excellence" and "qualification", and also comparing two different ideas where he used words like "similarly" and "potentially".
+
+In Locke's case, we can see how he focuses on political standpoint as he used words like "annexed", "legislative", and "executive". He also seems to emphasize a lot of points in his works as seen from the words "certainty" and "signification"
+```{r}
+word_ratios %>%
+  group_by(logratio < 0) %>%
+  slice_max(abs(logratio), n = 15) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, logratio)) %>%
+  ggplot(aes(word, logratio, fill = logratio < 0)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#940f0f", "#0f9494")) +
+  coord_flip() +
+  ylab("log odds ratio (Locke | Aristotle)")
+```
+
+# Topic Modeling
+I'm diving into what topic that each work represents using LDA approach to cluster the list of words into 4 topics in this step. 
+
+```{r}
+# find document-word counts
+doc_word_counts <- tidy_realist %>%
+  anti_join(stop_words) %>%
+  count(author, word, sort = TRUE)
+
+dtm <- doc_word_counts %>%
+  cast_dtm(author, word, n)
+
+# A LDA_VEM topic model with 4 topics.
+model_lda <- LDA(dtm, k = 4, control = list(seed = 2022))
+model_lda
+
+# examine per-topic word probabiltiies
+lda_beta <- tidy(model_lda, matrix = "beta")
+head(lda_beta, 20)
+
+# top 10 terms that are most common within each topic
+lda_beta_top_terms <- lda_beta %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+lda_beta_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_fill_manual(values = c("#873e23", "#e28743", "#1e81b0", "#063970")) +
+  scale_y_reordered()
+```
+
+## examine which topics are associated with which author
+We can see that topic 1 and 3 are most likely to be associated with Aristotle's works while topic 2 and 4 are most likely to be associated with Locke's works.
+
+Topic 1 has more words related to the nature, which aligns with Aristotle's logical perspective of using objects to convey his messages, since it involves words such as "animals", "water", "earth". Topic 3 returns a similar topic where it also contains words such as "air", "nature", "animals". "people", and "substance". 
+
+Topic 2 and 4 contain variety of words around conceptual words such as "truth", "knowledge", "ideas", "mind", "distinct", "complex", and "simple". This seems to reflect Locke's works since he focuses more on political and educational perspectives.
+
+```{r}
+lda_gamma <- tidy(model_lda, matrix = "gamma")
+
+lda_gamma %>% arrange(desc(gamma))
+```
