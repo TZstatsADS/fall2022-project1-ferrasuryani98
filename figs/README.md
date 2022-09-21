@@ -1,5 +1,4 @@
-# ADS Project 1:  R Notebook on the history of philosophy
+# ADS Project 1:  What's in a realist's mind?
 
 ### Figs folder
-
-The figs directory contains the figures. This directory only contains generated files; that is, one should always be able to delete the contents and regenerate them.
+Any graphs or charts produced in the work of this project can be found here.
