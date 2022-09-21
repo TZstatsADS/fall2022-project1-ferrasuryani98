@@ -1,6 +1,5 @@
-# ADS Project 1:  R Notebook on the history of philosophy
+# ADS Project 1:  What's in a realist's mind?
 
 ### Output folder
-
-The output directory contains analysis output, processed datasets, logs, or other processed things.
+The .csv files output and both .rmd and html files of the analysis work can be found here.
 
